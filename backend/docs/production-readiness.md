@@ -1,0 +1,7 @@
+# Production readiness
+
+Before deployment, configure `.env` or a secret manager with the PostgreSQL, Redis, OIDC/JWT, object storage, Qdrant Cloud, DashScope-compatible embedding endpoint, vector collection, and OpenAI-compatible LLM values. Set `APP_ENV=production`, `AUTH_DEV_MODE=false`, `ALLOW_MEMORY_FALLBACK=false`, `PERSISTENCE_BACKEND=postgresql`, configure `VECTOR_STORE_BACKEND=qdrant`, and configure either `JWT_HS256_SECRET` or `JWT_JWKS_URL` (with issuer/audience claims as applicable). Qdrant, embedding, and LLM credentials are independent and must be injected at runtime.
+
+The default Compose profile uses local PostgreSQL, Redis, and MinIO only. Qdrant Cloud, the embedding API, and the LLM endpoint are external dependencies configured through `.env`; no local Qdrant or model container is started. Their endpoint, model, credential, TLS, rate-limit, data-residency, and collection-dimension contracts must be verified before use. A failed provider must remain visible as not ready and must not be replaced silently by hashing embeddings.
+
+Run every SQL migration in `migrations/` against PostgreSQL before starting API/Worker. The current repository container intentionally refuses `APP_ENV=production` until its in-memory repositories, audit implementation, and vector backend are replaced or wired to production-grade adapters; this fail-closed behavior prevents a deployment that loses data after restart. The development fixture provider is intentionally marked `dev_fixture` and must not be selected by a production data-source registry.

@@ -1,0 +1,11 @@
+{
+  "rule_id": "legal_tax_boundary",
+  "version": "1.0.0",
+  "category": "human_review",
+  "priority": 30,
+  "severity": "high",
+  "description": "税务、法律和内幕信息问题需要人工复核",
+  "trigger": {"type": "keyword_or_llm", "patterns": ["法律意见", "税务意见", "内幕消息", "内幕信息", "legal opinion", "tax advice", "insider information"]},
+  "action": "require_human",
+  "test_cases": [{"input": "请给我法律意见", "expected": "require_human"}]
+}

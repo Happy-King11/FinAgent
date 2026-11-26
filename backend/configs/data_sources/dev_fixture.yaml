@@ -1,0 +1,27 @@
+source_id: dev_fixture
+provider: repository_fixture
+environment: development_only
+authorization_scope: synthetic_data_only
+data_types: [security_master, equity_eod, fund_nav, portfolio_position]
+update_frequency: static
+history_available: true
+schema_version: "1.0.0"
+freshness:
+  max_age_days: 3650
+fields:
+  - name: close
+    type: decimal
+    currency: CNY
+    unit: per_share
+    adjustment: unadjusted
+  - name: nav
+    type: decimal
+    currency: CNY
+    unit: per_share
+    adjustment: none
+retention:
+  raw_data: test_run_only
+  derived_data: test_run_only
+conflict_resolution:
+  order: [authorized_primary, authorized_secondary, manual_review]
+  rule: reject_conflict

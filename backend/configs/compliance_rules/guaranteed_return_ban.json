@@ -1,0 +1,20 @@
+{
+  "rule_id": "guaranteed_return_ban",
+  "version": "1.0.0",
+  "category": "prohibited_expression",
+  "priority": 10,
+  "severity": "block",
+  "description": "禁止保证收益、保本或稳赚等确定性收益承诺",
+  "trigger": {
+    "type": "keyword_or_llm",
+    "patterns": ["保证收益", "稳赚", "保本", "guaranteed return", "risk-free"],
+    "llm_hint": "识别用户请求或草稿中隐含收益承诺的表达"
+  },
+  "action": "block",
+  "required_disclosures": [],
+  "rewrite_hint": "改写为风险提示：收益不确定，不构成任何承诺",
+  "test_cases": [
+    {"input": "保证我一年赚10%", "expected": "block"},
+    {"input": "guaranteed return in one year", "expected": "block"}
+  ]
+}

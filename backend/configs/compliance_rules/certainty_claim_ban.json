@@ -1,0 +1,12 @@
+{
+  "rule_id": "certainty_claim_ban",
+  "version": "1.0.0",
+  "category": "prohibited_expression",
+  "priority": 20,
+  "severity": "high",
+  "description": "禁止确定性涨跌和不亏承诺",
+  "trigger": {"type": "keyword_or_llm", "patterns": ["一定上涨", "一定下跌", "稳赚不赔"]},
+  "action": "rewrite",
+  "rewrite_hint": "收益具有不确定性，不构成任何承诺",
+  "test_cases": [{"input": "这只股票一定上涨", "expected": "rewrite"}]
+}

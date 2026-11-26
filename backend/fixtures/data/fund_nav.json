@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "dev_fixture",
+  "source_as_of": "2026-08-21T18:00:00+08:00",
+  "items": [
+    {"fund_id": "fund_demo_000001", "fund_code": "000001", "fund_name": "示例稳健混合基金", "fund_type": "public_mutual_fund", "share_class": "A", "nav_date": "2026-08-21", "nav": 1.2345, "accumulated_nav": 1.4567, "management_fee": 0.006, "custody_fee": 0.001, "risk_level": "medium", "document_version": "demo-1"}
+  ]
+}

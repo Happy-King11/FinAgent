@@ -1,0 +1,154 @@
+services:
+  web:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-financial_agent}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-financial-agent}
+      OBJECT_STORAGE_ENABLED: "true"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-change-me}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-change-me-too}
+      APP_ENV: development
+      AUTH_DEV_MODE: "true"
+      REQUIRE_AUTH: "false"
+      PERSISTENCE_BACKEND: postgresql
+      REDIS_IDEMPOTENCY_ENABLED: "true"
+      VECTOR_STORE_BACKEND: qdrant
+      VECTOR_STORE_URL: ${VECTOR_STORE_URL:?VECTOR_STORE_URL is required}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY is required}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-financial-agent-documents}
+      QDRANT_TIMEOUT_SECONDS: "10"
+      EMBEDDING_PROVIDER: openai_compatible
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:?EMBEDDING_BASE_URL is required}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:?EMBEDDING_API_KEY is required}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?EMBEDDING_MODEL is required}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:?EMBEDDING_DIMENSION is required}
+      EMBEDDING_TIMEOUT_SECONDS: "60"
+      EMBEDDING_BATCH_SIZE: "16"
+      LLM_PROVIDER: openai_compatible
+      LLM_BASE_URL: ${LLM_BASE_URL:?LLM_BASE_URL is required}
+      LLM_API_KEY: ${LLM_API_KEY:?LLM_API_KEY is required}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-v4-pro}
+      LLM_TIMEOUT_SECONDS: "60"
+      LLM_MAX_TOKENS: "1200"
+    ports: ["8010:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    command: /bin/sh -c "python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  worker:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-financial_agent}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-financial-agent}
+      OBJECT_STORAGE_ENABLED: "true"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-change-me}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-change-me-too}
+      APP_ENV: development
+      AUTH_DEV_MODE: "true"
+      REQUIRE_AUTH: "false"
+      PERSISTENCE_BACKEND: postgresql
+      REDIS_IDEMPOTENCY_ENABLED: "true"
+      VECTOR_STORE_BACKEND: qdrant
+      VECTOR_STORE_URL: ${VECTOR_STORE_URL:?VECTOR_STORE_URL is required}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY is required}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-financial-agent-documents}
+      QDRANT_TIMEOUT_SECONDS: "10"
+      EMBEDDING_PROVIDER: openai_compatible
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:?EMBEDDING_BASE_URL is required}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:?EMBEDDING_API_KEY is required}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?EMBEDDING_MODEL is required}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:?EMBEDDING_DIMENSION is required}
+      EMBEDDING_TIMEOUT_SECONDS: "60"
+      EMBEDDING_BATCH_SIZE: "16"
+      LLM_PROVIDER: openai_compatible
+      LLM_BASE_URL: ${LLM_BASE_URL:?LLM_BASE_URL is required}
+      LLM_API_KEY: ${LLM_API_KEY:?LLM_API_KEY is required}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-v4-pro}
+      LLM_TIMEOUT_SECONDS: "60"
+      LLM_MAX_TOKENS: "1200"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A app.infrastructure.queue.tasks.celery_app worker --loglevel=INFO
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-financial_agent}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports: ["5433:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d financial_agent"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-change-me}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me-too}
+    ports: ["9002:9000", "9003:9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/ready || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-change-me}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me-too}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/financial-agent"
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

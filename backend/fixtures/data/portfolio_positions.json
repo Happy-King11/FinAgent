@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "dev_fixture",
+  "authorization_scope": "synthetic_data_only",
+  "items": [
+    {"portfolio_id": "portfolio_demo", "security_id": "cn_600519", "quantity": 100, "cost_amount": 160000.0, "market_value": 170000.0, "currency": "CNY", "as_of": "2026-08-21T15:00:00+08:00", "consent_ref": "synthetic-consent"},
+    {"portfolio_id": "portfolio_demo", "security_id": "cn_300750", "quantity": 200, "cost_amount": 48000.0, "market_value": 50000.0, "currency": "CNY", "as_of": "2026-08-21T15:00:00+08:00", "consent_ref": "synthetic-consent"},
+    {"portfolio_id": "portfolio_demo", "security_id": "fund_demo_000001", "quantity": 10000, "cost_amount": 12000.0, "market_value": 12345.0, "currency": "CNY", "as_of": "2026-08-21T18:00:00+08:00", "consent_ref": "synthetic-consent"}
+  ]
+}

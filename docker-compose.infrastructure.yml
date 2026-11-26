@@ -1,0 +1,127 @@
+name: finagent-infrastructure
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-financial_agent}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-change-me}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me-too}
+    ports:
+      - "${MINIO_API_HOST_PORT:-9002}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9003}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/ready || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-change-me}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me-too}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-financial-agent}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+        mc mb --ignore-existing "local/$${OBJECT_STORAGE_BUCKET}"
+
+  qdrant:
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_HTTP_HOST_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_HOST_PORT:-6334}:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  db-init:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment: &container-app-environment
+      APP_ENV: development
+      AUTH_DEV_MODE: "true"
+      REQUIRE_AUTH: "false"
+      PERSISTENCE_BACKEND: postgresql
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-financial_agent}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_IDEMPOTENCY_ENABLED: "true"
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-financial-agent}
+      OBJECT_STORAGE_ENABLED: "true"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-change-me}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-change-me-too}
+      VECTOR_STORE_BACKEND: qdrant
+      VECTOR_STORE_URL: http://qdrant:6333
+      QDRANT_API_KEY: ""
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-financial-agent}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+    command: python scripts/init_db.py
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      <<: *container-app-environment
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    command: celery -A app.infrastructure.queue.tasks.celery_app worker --loglevel=INFO
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  qdrant-data:

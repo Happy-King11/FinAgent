@@ -1,0 +1,28 @@
+# Legacy optional override: the default deployment uses DashScope embeddings.
+# This file is retained only for historical self-hosted BGE-M3 experiments.
+services:
+  vllm-embedding:
+    build: null
+    image: vllm/vllm-openai:v0.7.3
+    command:
+      - --model
+      - BAAI/bge-m3
+      - --served-model-name
+      - BAAI/bge-m3
+      - --task
+      - embed
+      - --dtype
+      - half
+      - --max-model-len
+      - "2048"
+      - --max-num-seqs
+      - "1"
+      - --gpu-memory-utilization
+      - "0.85"
+    environment:
+      HF_HOME: /root/.cache/huggingface
+      HF_HUB_ENABLE_HF_TRANSFER: "0"
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    gpus: all

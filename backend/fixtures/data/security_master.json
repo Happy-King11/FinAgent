@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "dev_fixture",
+  "source_as_of": "2026-08-21T15:00:00+08:00",
+  "items": [
+    {"security_id": "cn_600519", "ticker": "600519", "exchange": "SSE", "security_name": "示例消费公司", "asset_class": "equity", "currency": "CNY", "listing_status": "listed", "industry_code": "FOOD", "industry_name": "食品饮料"},
+    {"security_id": "cn_300750", "ticker": "300750", "exchange": "SZSE", "security_name": "示例新能源公司", "asset_class": "equity", "currency": "CNY", "listing_status": "listed", "industry_code": "BATTERY", "industry_name": "电力设备"},
+    {"security_id": "fund_demo_000001", "ticker": "000001", "exchange": "FUND", "security_name": "示例稳健混合基金", "asset_class": "fund", "currency": "CNY", "listing_status": "active", "industry_code": null, "industry_name": null}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0.0",
+  "source_id": "dev_fixture",
+  "source_as_of": "2026-08-21T15:00:00+08:00",
+  "items": [
+    {"security_id": "cn_600519", "trade_date": "2026-08-21", "open": 1680.0, "high": 1712.0, "low": 1665.0, "close": 1700.0, "volume": 1200000, "amount": 2040000000.0, "currency": "CNY", "adjustment": "unadjusted"},
+    {"security_id": "cn_300750", "trade_date": "2026-08-21", "open": 245.0, "high": 252.0, "low": 241.0, "close": 250.0, "volume": 3500000, "amount": 875000000.0, "currency": "CNY", "adjustment": "unadjusted"}
+  ]
+}
